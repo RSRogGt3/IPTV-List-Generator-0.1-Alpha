@@ -1,0 +1,395 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Authenticated owner profile for StreamGrid DE cloud workspace.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "createdAt", "updatedAt"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "German TV or streaming channel with assigned IP endpoint.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["sky", "netflix", "amazon", "disney", "public_de", "private_de", "at_ch", "custom"]
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "quality": {
+          "type": "string",
+          "enum": ["4K UHD", "Full HD", "HD", "SD"]
+        },
+        "protocol": {
+          "type": "string",
+          "enum": ["http", "https", "rtsp", "udp", "rtp"]
+        },
+        "ip": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 15,
+          "pattern": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "tvgId": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "upstreamUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "provider",
+        "category",
+        "language",
+        "quality",
+        "protocol",
+        "ip",
+        "port",
+        "path",
+        "tvgId",
+        "enabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "Curated M3U playlist linking channels by ordered IDs.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "channelIds": {
+          "type": "array"
+        },
+        "protocolOverride": {
+          "type": "string",
+          "enum": ["channel", "http", "https", "rtsp", "udp", "rtp"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "description",
+        "channelIds",
+        "protocolOverride",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "IpProfile": {
+      "title": "IpProfile",
+      "description": "Reusable IPv4 subnet and port allocation template.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "baseIp": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 15,
+          "pattern": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        },
+        "startPort": {
+          "type": "integer"
+        },
+        "protocol": {
+          "type": "string",
+          "enum": ["http", "https", "rtsp", "udp", "rtp"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["increment-port", "increment-ip", "provider-blocks"]
+        },
+        "pathPrefix": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "description",
+        "baseIp",
+        "startPort",
+        "protocol",
+        "mode",
+        "pathPrefix",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Multi-turn Gemini assistant message persisted in user history.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant"]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "taskMode": {
+          "type": "string",
+          "enum": ["auto", "fast", "search", "interactive", "reasoning"]
+        },
+        "sources": {
+          "type": "array"
+        },
+        "suggestedPlaylist": {
+          "type": "object"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "role", "text", "model", "taskMode", "createdAt"]
+    },
+    "StreamSource": {
+      "title": "StreamSource",
+      "description": "Auto-refreshing M3U/IPTV source feed mapped to a target playlist.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "url": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 500
+        },
+        "targetPlaylistId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "targetPlaylistName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "autoRefresh": {
+          "type": "boolean"
+        },
+        "intervalMinutes": {
+          "type": "integer"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "defaultIp": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 15,
+          "pattern": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        },
+        "startPort": {
+          "type": "integer"
+        },
+        "lastSyncedAt": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "lastStatus": {
+          "type": "string",
+          "enum": ["idle", "syncing", "ok", "error"]
+        },
+        "lastAddedCount": {
+          "type": "integer"
+        },
+        "lastUpdatedCount": {
+          "type": "integer"
+        },
+        "lastTotalCount": {
+          "type": "integer"
+        },
+        "lastError": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "url",
+        "targetPlaylistId",
+        "targetPlaylistName",
+        "autoRefresh",
+        "intervalMinutes",
+        "enabled",
+        "defaultIp",
+        "startPort",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "User workspace root document owned strictly by userId."
+    },
+    "/users/{userId}/channels/{channelId}": {
+      "schema": { "$ref": "#/entities/Channel" },
+      "description": "User-owned German channels and assigned IP endpoints."
+    },
+    "/users/{userId}/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/Playlist" },
+      "description": "User-owned M3U playlists referencing channel IDs."
+    },
+    "/users/{userId}/ipProfiles/{profileId}": {
+      "schema": { "$ref": "#/entities/IpProfile" },
+      "description": "User-owned IP subnet templates."
+    },
+    "/users/{userId}/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Persistent multi-turn Gemini chatbot conversation history."
+    },
+    "/users/{userId}/streamSources/{sourceId}": {
+      "schema": { "$ref": "#/entities/StreamSource" },
+      "description": "User-owned auto-refreshing M3U source definitions and sync status."
+    }
+  }
+}

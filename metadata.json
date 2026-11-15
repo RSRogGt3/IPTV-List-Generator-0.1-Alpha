@@ -1,0 +1,6 @@
+{
+  "name": "StreamGrid DE — Zentrale IP- & Playlist-Verwaltung",
+  "description": "Zentrale Webapp zum Erstellen, Verknüpfen und Verwalten von IP-Endpunkten und M3U-Playlists für Sky, Netflix, Amazon Prime, Disney+ und alle deutschen TV-Kanäle.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

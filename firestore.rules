@@ -1,0 +1,332 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isVerifiedOwner(userId) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && isValidId(userId)
+        && request.auth.uid == userId;
+    }
+
+    function hasWorkspaceRoot(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function isValidIp(ip) {
+      return ip is string
+        && ip.size() >= 7
+        && ip.size() <= 15
+        && ip.matches('^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
+    }
+
+    function noNewlines(s) {
+      return s is string && !s.matches('.*[\\r\\n].*');
+    }
+
+    function isValidHttpUrl(url, maxLen) {
+      return url is string
+        && url.size() >= 8
+        && url.size() <= maxLen
+        && url.matches('^https?://[^\\s\\r\\n]+$');
+    }
+
+    function isValidSourceUrl(url, maxLen) {
+      return isValidHttpUrl(url, maxLen)
+        || (
+          url is string
+          && url.size() >= 12
+          && url.size() <= maxLen
+          && !url.matches('.*\\.\\..*')
+          && url.matches('^/api/feeds/[a-zA-Z0-9_\\-]+(\\.[a-zA-Z0-9]+)?$')
+        );
+    }
+
+    function isValidProvider(p) {
+      return p in ['sky', 'netflix', 'amazon', 'disney', 'public_de', 'private_de', 'at_ch', 'custom'];
+    }
+
+    function isValidProtocol(proto) {
+      return proto in ['http', 'https', 'rtsp', 'udp', 'rtp'];
+    }
+
+    function isValidQuality(q) {
+      return q in ['4K UHD', 'Full HD', 'HD', 'SD'];
+    }
+
+    function isValidUserAccount(data, userId) {
+      return data.keys().hasAll(['uid', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'createdAt', 'updatedAt'])
+        && data.uid == userId
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChannel(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'provider', 'category', 'language',
+          'quality', 'protocol', 'ip', 'port', 'path', 'tvgId',
+          'enabled', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'provider', 'category', 'language',
+          'quality', 'protocol', 'ip', 'port', 'path', 'tvgId',
+          'enabled', 'upstreamUrl', 'notes', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId == userId
+        && noNewlines(data.name) && data.name.size() >= 1 && data.name.size() <= 120
+        && isValidProvider(data.provider)
+        && noNewlines(data.category) && data.category.size() >= 1 && data.category.size() <= 80
+        && noNewlines(data.language) && data.language.size() >= 1 && data.language.size() <= 40
+        && isValidQuality(data.quality)
+        && isValidProtocol(data.protocol)
+        && isValidIp(data.ip)
+        && data.port is int && data.port >= 1 && data.port <= 65535
+        && data.path is string && data.path.size() <= 200 && (data.path == '' || data.path.matches('^/[^\\s\\r\\n]*$'))
+        && noNewlines(data.tvgId) && data.tvgId.size() <= 120
+        && data.enabled is bool
+        && (!('upstreamUrl' in data) || (data.upstreamUrl is string && (data.upstreamUrl == '' || isValidHttpUrl(data.upstreamUrl, 500))))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 300))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPlaylist(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'description', 'channelIds',
+          'protocolOverride', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'description', 'channelIds',
+          'protocolOverride', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId == userId
+        && noNewlines(data.name) && data.name.size() >= 1 && data.name.size() <= 120
+        && data.description is string && data.description.size() <= 400
+        && data.channelIds is list && data.channelIds.size() <= 200
+        && (data.channelIds.size() == 0 || (isValidId(data.channelIds[0]) && isValidId(data.channelIds[data.channelIds.size() - 1])))
+        && (data.protocolOverride == 'channel' || isValidProtocol(data.protocolOverride))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidIpProfile(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'description', 'baseIp', 'startPort',
+          'protocol', 'mode', 'pathPrefix', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'description', 'baseIp', 'startPort',
+          'protocol', 'mode', 'pathPrefix', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId == userId
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.description is string && data.description.size() <= 300
+        && isValidIp(data.baseIp)
+        && data.startPort is int && data.startPort >= 1 && data.startPort <= 65535
+        && isValidProtocol(data.protocol)
+        && data.mode in ['increment-port', 'increment-ip', 'provider-blocks']
+        && data.pathPrefix is string && data.pathPrefix.size() <= 120
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGroundingSource(src) {
+      return src is map
+        && src.keys().hasAll(['title', 'uri'])
+        && src.keys().hasOnly(['title', 'uri'])
+        && src.title is string && src.title.size() >= 1 && src.title.size() <= 200
+        && isValidHttpUrl(src.uri, 1000);
+    }
+
+    function isValidSuggestedPlaylist(sp) {
+      return sp is map
+        && sp.keys().hasAll(['name', 'description', 'channelIds'])
+        && sp.keys().hasOnly(['name', 'description', 'channelIds'])
+        && sp.name is string && sp.name.size() >= 1 && sp.name.size() <= 120
+        && sp.description is string && sp.description.size() <= 400
+        && sp.channelIds is list && sp.channelIds.size() <= 50
+        && (sp.channelIds.size() == 0 || (isValidId(sp.channelIds[0]) && isValidId(sp.channelIds[sp.channelIds.size() - 1])));
+    }
+
+    function isValidChatMessage(data, userId) {
+      return data.keys().hasAll(['ownerId', 'role', 'text', 'model', 'taskMode', 'createdAt'])
+        && data.keys().hasOnly(['ownerId', 'role', 'text', 'model', 'taskMode', 'sources', 'suggestedPlaylist', 'createdAt'])
+        && data.ownerId == userId
+        && data.role in ['user', 'assistant']
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 20000
+        && data.model is string && data.model.size() >= 1 && data.model.size() <= 80
+        && data.taskMode in ['auto', 'fast', 'search', 'interactive', 'reasoning']
+        && (!('sources' in data) || (data.sources is list && data.sources.size() <= 20 && (data.sources.size() == 0 || (isValidGroundingSource(data.sources[0]) && isValidGroundingSource(data.sources[data.sources.size() - 1])))))
+        && (!('suggestedPlaylist' in data) || isValidSuggestedPlaylist(data.suggestedPlaylist))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidStreamSource(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'url', 'targetPlaylistId', 'targetPlaylistName',
+          'autoRefresh', 'intervalMinutes', 'enabled', 'defaultIp', 'startPort',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'url', 'targetPlaylistId', 'targetPlaylistName',
+          'autoRefresh', 'intervalMinutes', 'enabled', 'defaultIp', 'startPort',
+          'lastSyncedAt', 'lastStatus', 'lastAddedCount', 'lastUpdatedCount',
+          'lastTotalCount', 'lastError', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId == userId
+        && noNewlines(data.name) && data.name.size() >= 1 && data.name.size() <= 120
+        && isValidSourceUrl(data.url, 500)
+        && isValidId(data.targetPlaylistId)
+        && noNewlines(data.targetPlaylistName) && data.targetPlaylistName.size() >= 1 && data.targetPlaylistName.size() <= 120
+        && data.autoRefresh is bool
+        && data.intervalMinutes is int && data.intervalMinutes >= 1 && data.intervalMinutes <= 1440
+        && data.enabled is bool
+        && isValidIp(data.defaultIp)
+        && data.startPort is int && data.startPort >= 1 && data.startPort <= 65535
+        && (!('lastSyncedAt' in data) || (data.lastSyncedAt is string && data.lastSyncedAt.size() <= 60))
+        && (!('lastStatus' in data) || data.lastStatus in ['idle', 'syncing', 'ok', 'error'])
+        && (!('lastAddedCount' in data) || (data.lastAddedCount is int && data.lastAddedCount >= 0 && data.lastAddedCount <= 100000))
+        && (!('lastUpdatedCount' in data) || (data.lastUpdatedCount is int && data.lastUpdatedCount >= 0 && data.lastUpdatedCount <= 100000))
+        && (!('lastTotalCount' in data) || (data.lastTotalCount is int && data.lastTotalCount >= 0 && data.lastTotalCount <= 100000))
+        && (!('lastError' in data) || (data.lastError is string && data.lastError.size() <= 400))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isVerifiedOwner(userId);
+      allow create: if isVerifiedOwner(userId)
+        && isValidUserAccount(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedOwner(userId)
+        && isValidUserAccount(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']);
+
+      match /channels/{channelId} {
+        allow list: if isVerifiedOwner(userId);
+        allow get: if isVerifiedOwner(userId) && isValidId(channelId) && (resource == null || resource.data.ownerId == userId);
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(channelId)
+          && isValidChannel(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasWorkspaceRoot(userId);
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(channelId)
+          && isValidChannel(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'provider', 'category', 'language', 'quality',
+            'protocol', 'ip', 'port', 'path', 'tvgId', 'enabled', 'upstreamUrl', 'notes', 'updatedAt'
+          ])
+          && hasWorkspaceRoot(userId);
+        allow delete: if isVerifiedOwner(userId) && isValidId(channelId);
+      }
+
+      match /playlists/{playlistId} {
+        allow list: if isVerifiedOwner(userId);
+        allow get: if isVerifiedOwner(userId) && isValidId(playlistId) && (resource == null || resource.data.ownerId == userId);
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(playlistId)
+          && isValidPlaylist(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasWorkspaceRoot(userId);
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(playlistId)
+          && isValidPlaylist(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'description', 'channelIds', 'protocolOverride', 'updatedAt'
+          ])
+          && hasWorkspaceRoot(userId);
+        allow delete: if isVerifiedOwner(userId) && isValidId(playlistId);
+      }
+
+      match /ipProfiles/{profileId} {
+        allow list: if isVerifiedOwner(userId);
+        allow get: if isVerifiedOwner(userId) && isValidId(profileId) && (resource == null || resource.data.ownerId == userId);
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(profileId)
+          && isValidIpProfile(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasWorkspaceRoot(userId);
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(profileId)
+          && isValidIpProfile(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'description', 'baseIp', 'startPort', 'protocol', 'mode', 'pathPrefix', 'updatedAt'
+          ])
+          && hasWorkspaceRoot(userId);
+        allow delete: if isVerifiedOwner(userId) && isValidId(profileId);
+      }
+
+      match /chatMessages/{messageId} {
+        allow list: if isVerifiedOwner(userId);
+        allow get: if isVerifiedOwner(userId) && isValidId(messageId) && (resource == null || resource.data.ownerId == userId);
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(messageId)
+          && isValidChatMessage(incoming(), userId)
+          && incoming().createdAt == request.time
+          && hasWorkspaceRoot(userId);
+        allow delete: if isVerifiedOwner(userId) && isValidId(messageId);
+      }
+
+      match /streamSources/{sourceId} {
+        allow list: if isVerifiedOwner(userId);
+        allow get: if isVerifiedOwner(userId) && isValidId(sourceId) && (resource == null || resource.data.ownerId == userId);
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(sourceId)
+          && isValidStreamSource(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasWorkspaceRoot(userId);
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(sourceId)
+          && isValidStreamSource(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'url', 'targetPlaylistId', 'targetPlaylistName',
+            'autoRefresh', 'intervalMinutes', 'enabled', 'defaultIp', 'startPort',
+            'lastSyncedAt', 'lastStatus', 'lastAddedCount', 'lastUpdatedCount',
+            'lastTotalCount', 'lastError', 'updatedAt'
+          ])
+          && hasWorkspaceRoot(userId);
+        allow delete: if isVerifiedOwner(userId) && isValidId(sourceId);
+      }
+    }
+  }
+}
